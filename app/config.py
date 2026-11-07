@@ -23,6 +23,22 @@ class Settings(BaseSettings):
     # Si es True, al iniciar siembra datos de demo (barrios, categorías, usuarios).
     seed_on_startup: bool = True
 
+    # --- RENIEC (consulta de DNI) ---
+    # Proveedor tercero (apis.net.pe, apiperu.dev, decolecta, etc.). Si no hay token,
+    # la API responde con datos de prueba (modo mock) para que la demo funcione igual.
+    reniec_api_url: str = "https://api.apis.net.pe/v2/reniec/dni"
+    reniec_api_token: str = ""
+
+    # --- Verificación por correo (código OTP) ---
+    otp_ttl_seconds: int = 600          # vigencia del código (10 min)
+    # Si no hay SMTP configurado, el código se devuelve en la respuesta (modo demo).
+    otp_dev_return_code: bool = True
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "Ayni <no-reply@ayni.pe>"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @field_validator("database_url")

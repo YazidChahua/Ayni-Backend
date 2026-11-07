@@ -16,7 +16,9 @@ from .routers import (
     geography,
     help,
     map,
+    otp,
     products,
+    reniec,
     reports,
     services,
     sync,
@@ -74,6 +76,8 @@ app.include_router(map.router)
 app.include_router(sync.router)
 app.include_router(reports.router)
 app.include_router(admin.router)
+app.include_router(reniec.router)
+app.include_router(otp.router)
 
 
 @app.get("/", tags=["health"])
