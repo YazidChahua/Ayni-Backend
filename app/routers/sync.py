@@ -77,10 +77,12 @@ def push_batch(
             results.append(schemas.SyncBatchResultItem(
                 client_uuid=item.client_uuid, server_id=obj.id, status="created"
             ))
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
+            # No exponemos el detalle interno del error (evita filtrar info de la BD).
             db.rollback()
             results.append(schemas.SyncBatchResultItem(
-                client_uuid=item.client_uuid, status="error", detail=str(exc)[:200]
+                client_uuid=item.client_uuid, status="error",
+                detail="No se pudo procesar este ítem. Revisa los datos enviados.",
             ))
 
     return schemas.SyncBatchResult(results=results)

@@ -74,6 +74,7 @@ def seed(db: Session) -> None:
         ("José Huamán", "jose@ayni.pe", "proveedor", "La Pascana", "Gasfitero certificado, atención rápida."),
         ("Rosa Ccopa", "rosa@ayni.pe", "proveedor", "Sector 1", "Clases de matemática y física."),
         ("Pedro Flores", "pedro@ayni.pe", "vecino", "Cercado de Lima", "Vecino del barrio."),
+        ("Admin Ayni", "admin@ayni.pe", "admin", "Cercado de Lima", "Administrador de la plataforma."),
     ]
     users = {}
     for name, email, role, barrio, bio in demo_users:

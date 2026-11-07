@@ -64,11 +64,22 @@ def update_status(
         raise HTTPException(status_code=403, detail="No participas en esta contratación")
 
     new = payload.status
-    # Reglas mínimas: el cliente cancela; el proveedor acepta/rechaza/completa.
-    if new in {"accepted", "rejected"} and current.id != booking.provider_id:
-        raise HTTPException(status_code=403, detail="Solo el proveedor puede aceptar o rechazar")
+    # Reglas: el cliente cancela; el proveedor acepta/rechaza/completa.
+    # IMPORTANTE: solo el PROVEEDOR puede marcar "completada". Así el cliente no
+    # puede autocompletarse el servicio para dejarse una reseña falsa.
+    if new in {"accepted", "rejected", "completed"} and current.id != booking.provider_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo el proveedor puede aceptar, rechazar o completar la contratación",
+        )
     if new == "cancelled" and current.id != booking.client_id:
         raise HTTPException(status_code=403, detail="Solo el cliente puede cancelar")
+    # No se puede completar algo que no fue aceptado antes.
+    if new == "completed" and booking.status != "accepted":
+        raise HTTPException(
+            status_code=400,
+            detail="La contratación debe estar 'accepted' antes de completarse",
+        )
 
     booking.status = new
     if new == "completed":
