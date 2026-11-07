@@ -1,0 +1,26 @@
+# Blueprint de Render para Ayni — base de datos en SUPABASE (externa).
+#
+# IMPORTANTE SOBRE SECRETOS:
+# Las variables con `sync: false` NO llevan su valor aquí (no se sube a GitHub).
+# Render te pedirá el valor al desplegar, o lo pones en el panel del servicio:
+#   Dashboard → ayni-api → Environment.
+# Así la contraseña de Supabase NUNCA queda en el repositorio.
+services:
+  - type: web
+    name: ayni-api
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: DATABASE_URL          # URI de Supabase (pooler, puerto 6543). Se pone en el panel.
+        sync: false
+      - key: JWT_SECRET            # Render puede generar una clave segura.
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: SEED_ON_STARTUP
+        value: "true"
