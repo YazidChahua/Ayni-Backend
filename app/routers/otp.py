@@ -155,14 +155,17 @@ def request_code(payload: EmailIn):
 
     logging.info("Código OTP para %s: %s", email, code)  # visible en logs del server
     # Preferir Resend; si no, SMTP.
-    if _send_resend(email, code) or _send_email(email, code):
-        return RequestOut(sent=True, channel="email")
+    sent_real = _send_resend(email, code) or _send_email(email, code)
 
-    # Sin SMTP: modo demo (devolvemos el código para poder probar).
+    # Mientras OTP_DEV_RETURN_CODE=true, devolvemos el código igual (respaldo en
+    # pantalla), porque sin dominio verificado Resend puede no entregar el correo
+    # aunque la API responda OK. Pon OTP_DEV_RETURN_CODE=false cuando el dominio
+    # esté verificado y quieras ocultarlo.
+    dev_code = code if settings.otp_dev_return_code else None
     return RequestOut(
         sent=True,
-        channel="dev",
-        dev_code=code if settings.otp_dev_return_code else None,
+        channel="email" if sent_real else "dev",
+        dev_code=dev_code,
     )
 
 
