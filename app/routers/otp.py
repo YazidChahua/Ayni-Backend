@@ -8,10 +8,13 @@ Si no hay SMTP configurado, el código se devuelve en la respuesta (modo demo)
 y también se imprime en los logs del servidor. En producción, configura las
 variables SMTP_* para enviar un correo real.
 """
+import json
 import logging
 import random
 import smtplib
 import time
+import urllib.error
+import urllib.request
 from email.message import EmailMessage
 
 from fastapi import APIRouter, HTTPException
@@ -43,6 +46,77 @@ class RequestOut(BaseModel):
 
 class VerifyOut(BaseModel):
     verified: bool
+
+
+def _email_html(code: str) -> str:
+    """Plantilla HTML del correo de verificación (colores Ayni/Shalom)."""
+    mins = settings.otp_ttl_seconds // 60
+    return f"""\
+<!doctype html>
+<html lang="es"><body style="margin:0;background:#f4f6fb;font-family:Segoe UI,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6fb;padding:28px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="440" cellpadding="0" cellspacing="0"
+             style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);">
+        <tr><td style="background:#1e2a5a;padding:22px 28px;color:#fff;font-size:22px;font-weight:800;">
+          Ayni
+          <span style="display:block;font-size:12px;font-weight:400;opacity:.8;margin-top:2px;">
+            Hoy por ti, mañana por mí
+          </span>
+        </td></tr>
+        <tr><td style="padding:30px 28px 10px;color:#1c2333;">
+          <h1 style="margin:0 0 8px;font-size:20px;color:#1e2a5a;">Tu código de verificación</h1>
+          <p style="margin:0 0 20px;font-size:14px;color:#5b6170;line-height:1.5;">
+            Usa este código para confirmar tu correo y crear tu cuenta en Ayni.
+          </p>
+          <div style="text-align:center;margin:10px 0 18px;">
+            <span style="display:inline-block;background:#f4f6fb;border:1px dashed #1e2a5a;border-radius:12px;
+                         padding:14px 26px;font-size:34px;font-weight:800;letter-spacing:10px;color:#1e2a5a;">
+              {code}
+            </span>
+          </div>
+          <p style="margin:0 0 24px;font-size:13px;color:#8a909c;text-align:center;">
+            Vence en {mins} minutos. Si no lo solicitaste, ignora este mensaje.
+          </p>
+        </td></tr>
+        <tr><td style="background:#f4f6fb;padding:16px 28px;color:#8a909c;font-size:12px;text-align:center;">
+          © Ayni · Plataforma de colaboración vecinal
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+
+
+def _send_resend(to: str, code: str) -> bool:
+    """Envía el código con la API de Resend. True si se envió."""
+    if not settings.resend_api_token:
+        return False
+    payload = json.dumps({
+        "from": settings.resend_from,
+        "to": [to],
+        "subject": "Tu código de verificación Ayni",
+        "html": _email_html(code),
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {settings.resend_api_token}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp.read()
+        return True
+    except urllib.error.HTTPError as e:
+        logging.warning("Resend respondió %s: %s", e.code, e.read().decode("utf-8", "ignore"))
+        return False
+    except Exception as e:  # noqa: BLE001
+        logging.warning("No se pudo enviar por Resend: %s", e)
+        return False
 
 
 def _send_email(to: str, code: str) -> bool:
@@ -80,8 +154,8 @@ def request_code(payload: EmailIn):
     }
 
     logging.info("Código OTP para %s: %s", email, code)  # visible en logs del server
-    sent_real = _send_email(email, code)
-    if sent_real:
+    # Preferir Resend; si no, SMTP.
+    if _send_resend(email, code) or _send_email(email, code):
         return RequestOut(sent=True, channel="email")
 
     # Sin SMTP: modo demo (devolvemos el código para poder probar).

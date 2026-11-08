@@ -31,8 +31,16 @@ class Settings(BaseSettings):
 
     # --- Verificación por correo (código OTP) ---
     otp_ttl_seconds: int = 600          # vigencia del código (10 min)
-    # Si no hay SMTP configurado, el código se devuelve en la respuesta (modo demo).
+    # Si no hay proveedor de correo, el código se devuelve en la respuesta (modo demo).
     otp_dev_return_code: bool = True
+
+    # Resend (recomendado): pon RESEND_API_TOKEN en Render → Environment.
+    # El "from" debe ser un dominio verificado en Resend; para pruebas usa
+    # "Ayni <onboarding@resend.dev>" (solo llega a tu propio correo de la cuenta Resend).
+    resend_api_token: str = ""
+    resend_from: str = "Ayni <onboarding@resend.dev>"
+
+    # SMTP (alternativa a Resend).
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""
